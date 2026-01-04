@@ -1,8 +1,8 @@
 # SSI Sign-In System
 
-A **Self-Sovereign Identity (SSI)** authentication system that enables passwordless login using verifiable credentials stored in mobile wallets like Lissi and Sovio.
+A **Self-Sovereign Identity (SSI)** authentication system that enables passwordless login using verifiable credentials stored in mobile wallets like Sovio.
 
-## 🎯 Project Flow
+##  Project Flow
 
 ### 1. Credential Issuance Flow
 ```
@@ -65,7 +65,7 @@ User → Visit Login Page → Scan Login QR Code → Wallet Requests Proof → U
                         └─────────────┘
 ```
 
-## 🏗️ Architecture
+## Architecture
 
 ### System Components
 
@@ -166,7 +166,7 @@ User → Visit Login Page → Scan Login QR Code → Wallet Requests Proof → U
 - **Containerization**: Docker & Docker Compose
 - **Mobile Wallets**: Lissi Wallet, Sovio Wallet
 
-## 📋 Requirements
+##  Requirements
 
 ### System Requirements
 
@@ -201,7 +201,7 @@ User → Visit Login Page → Scan Login QR Code → Wallet Requests Proof → U
 - **BCovrin Test Network**: For Indy ledger access (or local VON Network)
 - **Mobile Wallet**: Lissi Wallet or Sovio Wallet installed on user's device
 
-## 📁 Project Structure
+##  Project Structure
 
 ```
 SSI_signin/
@@ -224,7 +224,7 @@ SSI_signin/
 └── README.md           # This file
 ```
 
-## 🔄 Data Flow
+##  Data Flow
 
 ### Credential Issuance
 1. Backend creates connection invitation via Issuer Agent
@@ -244,7 +244,7 @@ SSI_signin/
 7. Backend creates session and returns token
 8. User redirected to dashboard
 
-## 🔐 Security Features
+##  Security Features
 
 - **Zero-Knowledge Proofs**: Users share only requested attributes
 - **Decentralized Trust**: Credentials verified against public ledger
