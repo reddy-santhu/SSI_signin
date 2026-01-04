@@ -1,0 +1,157 @@
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: ssi-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ssi_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - ssi-network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ACA-Py Issuer Agent
+  issuer-agent:
+    image: bcgovimages/aries-cloudagent:py36-1.16-1_0.8.1
+    container_name: ssi-issuer-agent
+    environment:
+      - ACAPY_LABEL=SSI Issuer Agent
+      - ACAPY_WALLET_TYPE=askar
+      - ACAPY_WALLET_NAME=issuer_wallet
+      - ACAPY_WALLET_KEY=${ISSUER_WALLET_KEY:-issuer_wallet_key}
+      - ACAPY_WALLET_STORAGE_TYPE=postgres_storage
+      - ACAPY_WALLET_STORAGE_CONFIG={"url":"postgres:5432","wallet_scheme":"DatabasePerWallet"}
+      - ACAPY_WALLET_STORAGE_CREDS={"account":"postgres","password":"${POSTGRES_PASSWORD:-postgres}","admin_account":"postgres","admin_password":"${POSTGRES_PASSWORD:-postgres}"}
+      - ACAPY_GENESIS_URL=http://test.bcovrin.vonx.io/genesis
+      - ACAPY_INVITE_PUBLIC=true
+      - ACAPY_PUBLIC_INVITES=true
+      - ACAPY_ADMIN_INSECURE_MODE=true
+      - ACAPY_ADMIN=0.0.0.0:8000
+      - ACAPY_INBOUND_TRANSPORT_HTTP=0.0.0.0:8001
+      - ACAPY_OUTBOUND_TRANSPORT_HTTP=${ISSUER_ENDPOINT:-http://localhost:8001}
+      - ACAPY_LOG_LEVEL=INFO
+      - ACAPY_AUTO_PROVISION=true
+      - ACAPY_WALLET_SEED=${ISSUER_WALLET_SEED:-}
+    ports:
+      - "8000:8000"  # Admin API
+      - "8001:8001"  # Inbound HTTP
+    networks:
+      - ssi-network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    entrypoint: /bin/bash
+    command: -c "aca-py start 
+      --admin 0.0.0.0 8000 
+      --admin-insecure-mode 
+      --inbound-transport http 0.0.0.0 8001 
+      --outbound-transport http 
+      --endpoint ${ISSUER_ENDPOINT:-http://localhost:8001} 
+      --genesis-url http://test.bcovrin.vonx.io/genesis 
+      --wallet-type askar 
+      --wallet-name issuer_wallet 
+      --wallet-key ${ISSUER_WALLET_KEY:-issuer_wallet_key} 
+      --wallet-storage-type postgres_storage 
+      --wallet-storage-config '{\"url\":\"postgres:5432\",\"wallet_scheme\":\"DatabasePerWallet\"}' 
+      --wallet-storage-creds '{\"account\":\"postgres\",\"password\":\"${POSTGRES_PASSWORD:-postgres}\",\"admin_account\":\"postgres\",\"admin_password\":\"${POSTGRES_PASSWORD:-postgres}\"}' 
+      --seed ${ISSUER_WALLET_SEED:-} 
+      --auto-provision 
+      --public-invites 
+      --label \"SSI Issuer Agent\" 
+      --log-level info"
+
+  # ACA-Py Verifier Agent
+  verifier-agent:
+    image: bcgovimages/aries-cloudagent:py36-1.16-1_0.8.1
+    container_name: ssi-verifier-agent
+    environment:
+      - ACAPY_LABEL=SSI Verifier Agent
+      - ACAPY_WALLET_TYPE=askar
+      - ACAPY_WALLET_NAME=verifier_wallet
+      - ACAPY_WALLET_KEY=${VERIFIER_WALLET_KEY:-verifier_wallet_key}
+      - ACAPY_WALLET_STORAGE_TYPE=postgres_storage
+      - ACAPY_WALLET_STORAGE_CONFIG={"url":"postgres:5432","wallet_scheme":"DatabasePerWallet"}
+      - ACAPY_WALLET_STORAGE_CREDS={"account":"postgres","password":"${POSTGRES_PASSWORD:-postgres}","admin_account":"postgres","admin_password":"${POSTGRES_PASSWORD:-postgres}"}
+      - ACAPY_GENESIS_URL=http://test.bcovrin.vonx.io/genesis
+      - ACAPY_INVITE_PUBLIC=true
+      - ACAPY_PUBLIC_INVITES=true
+      - ACAPY_ADMIN_INSECURE_MODE=true
+      - ACAPY_ADMIN=0.0.0.0:8002
+      - ACAPY_INBOUND_TRANSPORT_HTTP=0.0.0.0:8003
+      - ACAPY_OUTBOUND_TRANSPORT_HTTP=${VERIFIER_ENDPOINT:-http://localhost:8003}
+      - ACAPY_LOG_LEVEL=INFO
+      - ACAPY_AUTO_PROVISION=true
+    ports:
+      - "8002:8002"  # Admin API
+      - "8003:8003"  # Inbound HTTP
+    networks:
+      - ssi-network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    entrypoint: /bin/bash
+    command: -c "aca-py start --admin 0.0.0.0 8002 --admin-insecure-mode --inbound-transport http 0.0.0.0 8003 --outbound-transport http --endpoint ${VERIFIER_ENDPOINT:-http://localhost:8003} --genesis-url ${LEDGER_URL:-http://localhost:9000}/genesis --wallet-type askar --wallet-name verifier_wallet --wallet-key ${VERIFIER_WALLET_KEY:-verifier_wallet_key} --wallet-storage-type postgres_storage --wallet-storage-config '{\"url\":\"postgres:5432\",\"wallet_scheme\":\"DatabasePerWallet\"}' --wallet-storage-creds '{\"account\":\"postgres\",\"password\":\"${POSTGRES_PASSWORD:-postgres}\",\"admin_account\":\"postgres\",\"admin_password\":\"${POSTGRES_PASSWORD:-postgres}\"}' --auto-provision --public-invites --label \"SSI Verifier Agent\" --log-level info"
+
+  # Go Backend
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: ssi-backend
+    environment:
+      - PORT=8080
+      - DATABASE_URL=postgres://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/ssi_db?sslmode=disable
+      - ISSUER_AGENT_URL=http://issuer-agent:8000
+      - VERIFIER_AGENT_URL=http://verifier-agent:8002
+      - LEDGER_URL=http://host.docker.internal:9000
+    ports:
+      - "8080:8080"
+    networks:
+      - ssi-network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      issuer-agent:
+        condition: service_started
+      verifier-agent:
+        condition: service_started
+    command: ./ssi-backend
+
+  # React Frontend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: ssi-frontend
+    environment:
+      - REACT_APP_API_URL=http://localhost:8080/api
+    ports:
+      - "3000:3000"
+    networks:
+      - ssi-network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - backend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+
+networks:
+  ssi-network:
+    external: false
+
+volumes:
+  postgres-data:
+
