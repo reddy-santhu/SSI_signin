@@ -3,6 +3,7 @@ package services
 import (
 	"database/sql"
 	"fmt"
+	"time"
 
 	_ "github.com/lib/pq"
 )
@@ -19,7 +20,7 @@ func NewDatabase(connectionString string) (*Database, error) {
 
 	db.SetMaxOpenConns(25)
 	db.SetMaxIdleConns(5)
-	db.SetConnMaxLifetime(5 * 60)
+	db.SetConnMaxLifetime(5 * time.Minute)
 
 	if err := db.Ping(); err != nil {
 		return nil, fmt.Errorf("failed to ping database: %w", err)
@@ -31,4 +32,3 @@ func NewDatabase(connectionString string) (*Database, error) {
 func (d *Database) Close() error {
 	return d.DB.Close()
 }
-
