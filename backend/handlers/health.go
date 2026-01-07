@@ -3,6 +3,7 @@ package handlers
 import (
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/labstack/echo/v4"
 	"ssi-signin/backend/services"
@@ -12,6 +13,7 @@ type HealthHandler struct {
 	db              *services.Database
 	ariesService    *services.AriesService
 	verifierService *services.VerifierService
+	httpClient      *http.Client
 }
 
 func NewHealthHandler(db *services.Database, ariesService *services.AriesService, verifierService *services.VerifierService) *HealthHandler {
@@ -19,6 +21,7 @@ func NewHealthHandler(db *services.Database, ariesService *services.AriesService
 		db:              db,
 		ariesService:    ariesService,
 		verifierService: verifierService,
+		httpClient:      &http.Client{Timeout: 5 * time.Second},
 	}
 }
 
@@ -55,7 +58,7 @@ func (h *HealthHandler) Check(c echo.Context) error {
 }
 
 func (h *HealthHandler) checkAgent(url string) error {
-	resp, err := http.Get(url + "/status")
+	resp, err := h.httpClient.Get(url + "/status")
 	if err != nil {
 		return err
 	}
@@ -67,4 +70,3 @@ func (h *HealthHandler) checkAgent(url string) error {
 
 	return nil
 }
-
