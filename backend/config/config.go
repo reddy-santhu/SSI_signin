@@ -16,8 +16,8 @@ func Load() *Config {
 	return &Config{
 		Port:             getEnv("PORT", "8080"),
 		DatabaseURL:      getEnv("DATABASE_URL", "postgres://postgres:postgres@localhost:5432/ssi_db?sslmode=disable"),
-		IssuerAgentURL:   getEnv("ISSUER_AGENT_URL", "http://localhost:8002"),
-		VerifierAgentURL: getEnv("VERIFIER_AGENT_URL", "http://localhost:8004"),
+		IssuerAgentURL:   getEnv("ISSUER_AGENT_URL", "http://localhost:8000"),
+		VerifierAgentURL: getEnv("VERIFIER_AGENT_URL", "http://localhost:8002"),
 		LedgerURL:        getEnv("LEDGER_URL", "http://localhost:9000"),
 	}
 }
