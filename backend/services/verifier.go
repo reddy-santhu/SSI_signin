@@ -6,19 +6,20 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
 	"strings"
 )
 
 type VerifierService struct {
-	verifierURL string
-	client      *http.Client
+	verifierURL          string
+	invitationPublicBase string
+	client               *http.Client
 }
 
-func NewVerifierService(verifierURL string) *VerifierService {
+func NewVerifierService(verifierURL, invitationPublicBase string) *VerifierService {
 	return &VerifierService{
-		verifierURL: verifierURL,
-		client:      &http.Client{},
+		verifierURL:          verifierURL,
+		invitationPublicBase: invitationPublicBase,
+		client:               &http.Client{},
 	}
 }
 
@@ -27,33 +28,33 @@ func (v *VerifierService) VerifierURL() string {
 }
 
 type ProofRequest struct {
-	Name              string                 `json:"name"`
-	Version           string                 `json:"version"`
+	Name                string                 `json:"name"`
+	Version             string                 `json:"version"`
 	RequestedAttributes map[string]interface{} `json:"requested_attributes"`
 	RequestedPredicates map[string]interface{} `json:"requested_predicates,omitempty"`
 }
 
 func (v *VerifierService) CreateProofRequest(proofReq ProofRequest, responseURI string) (string, error) {
 	url := fmt.Sprintf("%s/present-proof/create-request", v.verifierURL)
-	
+
 	requestedPredicates := proofReq.RequestedPredicates
 	if requestedPredicates == nil {
 		requestedPredicates = map[string]interface{}{}
 	}
-	
+
 	payload := map[string]interface{}{
 		"proof_request": map[string]interface{}{
-			"name":                proofReq.Name,
-			"version":             proofReq.Version,
+			"name":                 proofReq.Name,
+			"version":              proofReq.Version,
 			"requested_attributes": proofReq.RequestedAttributes,
 			"requested_predicates": requestedPredicates,
 		},
 	}
-	
+
 	if responseURI != "" {
 		payload["response_uri"] = responseURI
 	}
-	
+
 	jsonData, err := json.Marshal(payload)
 	if err != nil {
 		return "", fmt.Errorf("failed to marshal proof request: %w", err)
@@ -150,26 +151,26 @@ func (v *VerifierService) CreateProofRequestWithOOB(proofReq ProofRequest, respo
 	} else {
 		return "", "", fmt.Errorf("request_presentations~attach not found in presentation_request_dict")
 	}
-	
+
 	if len(requestPresentationsAttach) == 0 {
 		return "", "", fmt.Errorf("request_presentations~attach is empty")
 	}
 
 	oobURL := fmt.Sprintf("%s/out-of-band/create-invitation", v.verifierURL)
-	
+
 	attachmentType, _ := presentationRequestDict["@type"].(string)
 	if attachmentType == "" {
 		attachmentType = "did:sov:BzCbsNYhMrjHiqZDTUASHg;spec/present-proof/1.0/request-presentation"
 	}
-	
+
 	attachments := []map[string]interface{}{
 		{
-			"@id": "request-0",
+			"@id":  "request-0",
 			"type": "present-proof",
 			"data": map[string]interface{}{
 				"json": map[string]interface{}{
-					"@type":                     attachmentType,
-					"@id":                       presentationRequestDict["@id"],
+					"@type":                        attachmentType,
+					"@id":                          presentationRequestDict["@id"],
 					"request_presentations~attach": requestPresentationsAttach,
 				},
 			},
@@ -177,10 +178,10 @@ func (v *VerifierService) CreateProofRequestWithOOB(proofReq ProofRequest, respo
 	}
 
 	payload := map[string]interface{}{
-		"auto_accept":        true,
-		"public":             true,
+		"auto_accept":         true,
+		"public":              true,
 		"handshake_protocols": []string{},
-		"attachments":        attachments,
+		"attachments":         attachments,
 	}
 
 	jsonData, err := json.Marshal(payload)
@@ -224,13 +225,12 @@ func (v *VerifierService) CreateProofRequestWithOOB(proofReq ProofRequest, respo
 		return "", "", fmt.Errorf("invitation_url not found in OOB response: %v", oobResult)
 	}
 
-	verifierEndpoint := os.Getenv("VERIFIER_ENDPOINT")
-	if verifierEndpoint != "" {
+	if v.invitationPublicBase != "" {
 		if strings.Contains(invitationURL, "verifier-agent:8003") {
-			invitationURL = strings.ReplaceAll(invitationURL, "verifier-agent:8003", verifierEndpoint)
+			invitationURL = strings.ReplaceAll(invitationURL, "verifier-agent:8003", v.invitationPublicBase)
 		}
 		if strings.Contains(invitationURL, "localhost:8003") {
-			invitationURL = strings.ReplaceAll(invitationURL, "localhost:8003", verifierEndpoint)
+			invitationURL = strings.ReplaceAll(invitationURL, "localhost:8003", v.invitationPublicBase)
 		}
 	}
 
@@ -239,7 +239,7 @@ func (v *VerifierService) CreateProofRequestWithOOB(proofReq ProofRequest, respo
 
 func (v *VerifierService) VerifyProof(proofRequestID string, proof map[string]interface{}) (bool, error) {
 	url := fmt.Sprintf("%s/present-proof/records/%s/verify-presentation", v.verifierURL, proofRequestID)
-	
+
 	req, err := http.NewRequest("POST", url, nil)
 	if err != nil {
 		return false, fmt.Errorf("failed to create request: %w", err)
@@ -275,4 +275,3 @@ func (v *VerifierService) VerifyProof(proofRequestID string, proof map[string]in
 
 	return verified, nil
 }
-

@@ -23,7 +23,7 @@ func main() {
 	defer db.Close()
 
 	ariesService := services.NewAriesService(cfg.IssuerAgentURL, cfg.VerifierAgentURL, cfg.LedgerURL)
-	verifierService := services.NewVerifierService(cfg.VerifierAgentURL)
+	verifierService := services.NewVerifierService(cfg.VerifierAgentURL, cfg.VerifierPublicURL)
 
 	e := echo.New()
 
@@ -31,7 +31,7 @@ func main() {
 	e.Use(middleware.Recover())
 	e.Use(middleware.CORS())
 
-	setupRoutes(e, db, ariesService, verifierService)
+	setupRoutes(e, cfg, db, ariesService, verifierService)
 
 	log.Printf("Server starting on port %s", cfg.Port)
 	if err := e.Start(":" + cfg.Port); err != nil {
@@ -39,9 +39,9 @@ func main() {
 	}
 }
 
-func setupRoutes(e *echo.Echo, db *services.Database, ariesService *services.AriesService, verifierService *services.VerifierService) {
+func setupRoutes(e *echo.Echo, cfg *config.Config, db *services.Database, ariesService *services.AriesService, verifierService *services.VerifierService) {
 	healthHandler := handlers.NewHealthHandler(db, ariesService, verifierService)
-	authHandler := handlers.NewAuthHandlerWithDeps(db, ariesService, verifierService)
+	authHandler := handlers.NewAuthHandlerWithDeps(db, cfg, ariesService, verifierService)
 	credentialHandler := handlers.NewCredentialHandler(ariesService)
 
 	e.GET("/health", healthHandler.Check)
@@ -64,4 +64,3 @@ func setupRoutes(e *echo.Echo, db *services.Database, ariesService *services.Ari
 	api.POST("/schemas", credentialHandler.CreateSchema)
 	api.POST("/credential-definitions", credentialHandler.CreateCredentialDefinition)
 }
-

@@ -2,7 +2,7 @@ package handlers
 
 import (
 	"net/http"
-	"os"
+	"ssi-signin/backend/config"
 	"ssi-signin/backend/models"
 	"ssi-signin/backend/repositories"
 	"ssi-signin/backend/services"
@@ -11,6 +11,7 @@ import (
 )
 
 type AuthHandler struct {
+	cfg               *config.Config
 	db                *services.Database
 	ariesService      *services.AriesService
 	verifierService   *services.VerifierService
@@ -21,24 +22,13 @@ type AuthHandler struct {
 	sessionRepo       *repositories.SessionRepository
 }
 
-func NewAuthHandler() *AuthHandler {
-	return &AuthHandler{}
-}
-
-func NewAuthHandlerWithDeps(db *services.Database, ariesService *services.AriesService, verifierService *services.VerifierService) *AuthHandler {
-	verifierEndpoint := verifierService.VerifierURL()
-	if verifierEndpoint == "http://verifier-agent:8002" {
-		verifierEndpoint = os.Getenv("VERIFIER_ENDPOINT")
-		if verifierEndpoint == "" {
-			verifierEndpoint = "http://localhost:8003"
-		}
-	}
-	
+func NewAuthHandlerWithDeps(db *services.Database, cfg *config.Config, ariesService *services.AriesService, verifierService *services.VerifierService) *AuthHandler {
 	return &AuthHandler{
+		cfg:               cfg,
 		db:                db,
 		ariesService:      ariesService,
 		verifierService:   verifierService,
-		qrService:         services.NewQRCodeService(verifierEndpoint),
+		qrService:         services.NewQRCodeService(cfg.VerifierPublicURL),
 		sessionService:    services.NewSessionService(),
 		proofRequestStore: services.NewProofRequestStore(),
 		userRepo:          repositories.NewUserRepository(db.DB),
@@ -56,13 +46,13 @@ type LoginResponse struct {
 }
 
 func (h *AuthHandler) Login(c echo.Context) error {
-	credDefID := os.Getenv("CREDENTIAL_DEFINITION_ID")
+	credDefID := h.cfg.CredentialDefinitionID
 	if credDefID == "" {
 		return c.JSON(http.StatusInternalServerError, map[string]string{
 			"error": "CREDENTIAL_DEFINITION_ID environment variable not set",
 		})
 	}
-	
+
 	proofReq := services.ProofRequest{
 		Name:    "SSI Sign-In",
 		Version: "1.0",
@@ -80,10 +70,7 @@ func (h *AuthHandler) Login(c echo.Context) error {
 
 	callbackURL := c.QueryParam("callback_url")
 	if callbackURL == "" {
-		callbackURL = os.Getenv("CALLBACK_URL")
-		if callbackURL == "" {
-			callbackURL = "http://localhost:8080/api/proof-callback"
-		}
+		callbackURL = h.cfg.CallbackURL
 	}
 
 	proofRequestID, invitationURL, err := h.verifierService.CreateProofRequestWithOOB(proofReq, callbackURL)
@@ -94,16 +81,16 @@ func (h *AuthHandler) Login(c echo.Context) error {
 				"error": "Failed to create proof request: " + err.Error(),
 			})
 		}
-		
+
 		h.proofRequestStore.Set(proofRequestID, "")
-		
+
 		qrData, err := h.qrService.GenerateQRData(proofRequestID, callbackURL)
 		if err != nil {
 			return c.JSON(http.StatusInternalServerError, map[string]string{
 				"error": "Failed to generate QR code: " + err.Error(),
 			})
 		}
-		
+
 		return c.JSON(http.StatusOK, LoginResponse{
 			QRData:         qrData,
 			ProofRequestID: proofRequestID,
@@ -237,28 +224,28 @@ func (h *AuthHandler) Dashboard(c echo.Context) error {
 }
 
 type LoginStatusResponse struct {
-	Status      string `json:"status"`
+	Status       string `json:"status"`
 	SessionToken string `json:"session_token,omitempty"`
 }
 
 func (h *AuthHandler) LoginStatus(c echo.Context) error {
 	proofRequestID := c.Param("proofRequestId")
-	
+
 	token, found := h.proofRequestStore.Get(proofRequestID)
 	if !found {
 		return c.JSON(http.StatusOK, LoginStatusResponse{
 			Status: "not_found",
 		})
 	}
-	
+
 	if token == "" {
 		return c.JSON(http.StatusOK, LoginStatusResponse{
 			Status: "pending",
 		})
 	}
-	
+
 	h.proofRequestStore.Delete(proofRequestID)
-	
+
 	return c.JSON(http.StatusOK, LoginStatusResponse{
 		Status:       "completed",
 		SessionToken: token,
