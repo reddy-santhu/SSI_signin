@@ -2,6 +2,9 @@ package main
 
 import (
 	"log"
+	"net/http"
+	"os"
+	"strings"
 
 	"ssi-signin/backend/config"
 	"ssi-signin/backend/handlers"
@@ -29,7 +32,23 @@ func main() {
 
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
-	e.Use(middleware.CORS())
+	if o := strings.TrimSpace(os.Getenv("CORS_ALLOW_ORIGINS")); o != "" {
+		parts := strings.Split(o, ",")
+		for i := range parts {
+			parts[i] = strings.TrimSpace(parts[i])
+		}
+		e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
+			AllowOrigins: parts,
+			AllowMethods: []string{
+				http.MethodGet, http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete, http.MethodOptions,
+			},
+			AllowHeaders: []string{
+				echo.HeaderOrigin, echo.HeaderContentType, echo.HeaderAccept, echo.HeaderAuthorization,
+			},
+		}))
+	} else {
+		e.Use(middleware.CORS())
+	}
 
 	setupRoutes(e, cfg, db, ariesService, verifierService)
 
