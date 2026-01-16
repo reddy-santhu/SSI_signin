@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"log"
 	"net/http"
 	"ssi-signin/backend/config"
 	"ssi-signin/backend/models"
@@ -77,8 +78,9 @@ func (h *AuthHandler) Login(c echo.Context) error {
 	if err != nil {
 		proofRequestID, err = h.verifierService.CreateProofRequest(proofReq, callbackURL)
 		if err != nil {
+			log.Printf("login create proof request: %v", err)
 			return c.JSON(http.StatusInternalServerError, map[string]string{
-				"error": "Failed to create proof request: " + err.Error(),
+				"error": "Failed to create proof request",
 			})
 		}
 
@@ -86,8 +88,9 @@ func (h *AuthHandler) Login(c echo.Context) error {
 
 		qrData, err := h.qrService.GenerateQRData(proofRequestID, callbackURL)
 		if err != nil {
+			log.Printf("login generate QR: %v", err)
 			return c.JSON(http.StatusInternalServerError, map[string]string{
-				"error": "Failed to generate QR code: " + err.Error(),
+				"error": "Failed to generate QR code",
 			})
 		}
 
@@ -122,17 +125,19 @@ type ProofCallbackResponse struct {
 func (h *AuthHandler) ProofCallback(c echo.Context) error {
 	var req ProofCallbackRequest
 	if err := c.Bind(&req); err != nil {
+		log.Printf("proof-callback bind: %v", err)
 		return c.JSON(http.StatusBadRequest, ProofCallbackResponse{
 			Success: false,
-			Message: "Invalid request: " + err.Error(),
+			Message: "Invalid request",
 		})
 	}
 
 	verified, err := h.verifierService.VerifyProof(req.ProofRequestID, req.Proof)
 	if err != nil {
+		log.Printf("proof-callback verify: %v", err)
 		return c.JSON(http.StatusInternalServerError, ProofCallbackResponse{
 			Success: false,
-			Message: "Proof verification failed: " + err.Error(),
+			Message: "Proof verification failed",
 		})
 	}
 
@@ -145,9 +150,10 @@ func (h *AuthHandler) ProofCallback(c echo.Context) error {
 
 	user, err := h.userRepo.FindByDID(req.HolderDID)
 	if err != nil {
+		log.Printf("proof-callback find user: %v", err)
 		return c.JSON(http.StatusInternalServerError, ProofCallbackResponse{
 			Success: false,
-			Message: "Database error: " + err.Error(),
+			Message: "Database error",
 		})
 	}
 
@@ -156,18 +162,20 @@ func (h *AuthHandler) ProofCallback(c echo.Context) error {
 			DID: req.HolderDID,
 		}
 		if err := h.userRepo.Create(user); err != nil {
+			log.Printf("proof-callback create user: %v", err)
 			return c.JSON(http.StatusInternalServerError, ProofCallbackResponse{
 				Success: false,
-				Message: "Failed to create user: " + err.Error(),
+				Message: "Failed to create user",
 			})
 		}
 	}
 
 	token, err := h.sessionService.GenerateToken()
 	if err != nil {
+		log.Printf("proof-callback session token: %v", err)
 		return c.JSON(http.StatusInternalServerError, ProofCallbackResponse{
 			Success: false,
-			Message: "Failed to generate session token: " + err.Error(),
+			Message: "Failed to generate session token",
 		})
 	}
 
@@ -178,9 +186,10 @@ func (h *AuthHandler) ProofCallback(c echo.Context) error {
 	}
 
 	if err := h.sessionRepo.Create(session); err != nil {
+		log.Printf("proof-callback create session: %v", err)
 		return c.JSON(http.StatusInternalServerError, ProofCallbackResponse{
 			Success: false,
-			Message: "Failed to create session: " + err.Error(),
+			Message: "Failed to create session",
 		})
 	}
 
@@ -207,8 +216,9 @@ func (h *AuthHandler) Dashboard(c echo.Context) error {
 
 	user, err := h.userRepo.FindByID(userID)
 	if err != nil {
+		log.Printf("dashboard find user: %v", err)
 		return c.JSON(http.StatusInternalServerError, map[string]string{
-			"error": "Failed to fetch user: " + err.Error(),
+			"error": "Failed to fetch user",
 		})
 	}
 
