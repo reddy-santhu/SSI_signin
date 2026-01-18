@@ -206,6 +206,22 @@ type DashboardResponse struct {
 	User *models.User `json:"user"`
 }
 
+func (h *AuthHandler) Logout(c echo.Context) error {
+	sess, ok := c.Get("session").(*models.Session)
+	if !ok || sess == nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{
+			"error": "session not found",
+		})
+	}
+	if err := h.sessionRepo.DeleteByToken(sess.Token); err != nil {
+		log.Printf("logout: %v", err)
+		return c.JSON(http.StatusInternalServerError, map[string]string{
+			"error": "could not sign out",
+		})
+	}
+	return c.NoContent(http.StatusNoContent)
+}
+
 func (h *AuthHandler) Dashboard(c echo.Context) error {
 	userID, ok := c.Get("user_id").(int)
 	if !ok {

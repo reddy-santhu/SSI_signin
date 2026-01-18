@@ -79,6 +79,7 @@ func setupRoutes(e *echo.Echo, cfg *config.Config, db *services.Database, ariesS
 	authMW := authMiddleware.NewAuthMiddleware(repositories.NewSessionRepository(db.DB))
 	protected := api.Group("", authMW.RequireAuth)
 	protected.GET("/dashboard", authHandler.Dashboard)
+	protected.POST("/logout", authHandler.Logout)
 
 	api.POST("/schemas", credentialHandler.CreateSchema)
 	api.POST("/credential-definitions", credentialHandler.CreateCredentialDefinition)

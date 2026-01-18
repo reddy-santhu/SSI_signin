@@ -20,13 +20,13 @@ func (r *SessionRepository) Create(session *models.Session) error {
 		VALUES ($1, $2, $3, $4)
 		RETURNING id
 	`
-	
+
 	now := time.Now()
 	err := r.db.QueryRow(query, session.UserID, session.Token, session.ExpiresAt, now).Scan(&session.ID)
 	if err != nil {
 		return err
 	}
-	
+
 	session.CreatedAt = now
 	return nil
 }
@@ -37,7 +37,7 @@ func (r *SessionRepository) FindByToken(token string) (*models.Session, error) {
 		FROM sessions
 		WHERE token = $1
 	`
-	
+
 	session := &models.Session{}
 	err := r.db.QueryRow(query, token).Scan(
 		&session.ID,
@@ -46,15 +46,15 @@ func (r *SessionRepository) FindByToken(token string) (*models.Session, error) {
 		&session.ExpiresAt,
 		&session.CreatedAt,
 	)
-	
+
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
-	
+
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return session, nil
 }
 
@@ -64,3 +64,7 @@ func (r *SessionRepository) DeleteExpired() error {
 	return err
 }
 
+func (r *SessionRepository) DeleteByToken(token string) error {
+	_, err := r.db.Exec(`DELETE FROM sessions WHERE token = $1`, token)
+	return err
+}
