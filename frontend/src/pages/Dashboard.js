@@ -9,12 +9,6 @@ function Dashboard() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const token = localStorage.getItem('sessionToken');
-    if (!token) {
-      navigate('/');
-      return;
-    }
-
     const fetchUserData = async () => {
       try {
         const response = await api.get('/dashboard');
@@ -33,7 +27,12 @@ function Dashboard() {
     fetchUserData();
   }, [navigate]);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await api.post('/logout');
+    } catch (err) {
+      console.error('Logout error:', err);
+    }
     localStorage.removeItem('sessionToken');
     navigate('/');
   };
