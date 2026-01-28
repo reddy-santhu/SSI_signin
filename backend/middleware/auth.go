@@ -2,20 +2,24 @@ package middleware
 
 import (
 	"net/http"
-	"ssi-signin/backend/repositories"
 	"strings"
 	"time"
 
 	"github.com/labstack/echo/v4"
+	"ssi-signin/backend/models"
 )
 
-type AuthMiddleware struct {
-	sessionRepo *repositories.SessionRepository
+type SessionFinder interface {
+	FindByToken(token string) (*models.Session, error)
 }
 
-func NewAuthMiddleware(sessionRepo *repositories.SessionRepository) *AuthMiddleware {
+type AuthMiddleware struct {
+	sessions SessionFinder
+}
+
+func NewAuthMiddleware(sessions SessionFinder) *AuthMiddleware {
 	return &AuthMiddleware{
-		sessionRepo: sessionRepo,
+		sessions: sessions,
 	}
 }
 
@@ -36,7 +40,7 @@ func (m *AuthMiddleware) RequireAuth(next echo.HandlerFunc) echo.HandlerFunc {
 		}
 
 		token := parts[1]
-		session, err := m.sessionRepo.FindByToken(token)
+		session, err := m.sessions.FindByToken(token)
 		if err != nil {
 			return c.JSON(http.StatusInternalServerError, map[string]string{
 				"error": "Failed to validate session",
@@ -61,4 +65,3 @@ func (m *AuthMiddleware) RequireAuth(next echo.HandlerFunc) echo.HandlerFunc {
 		return next(c)
 	}
 }
-
