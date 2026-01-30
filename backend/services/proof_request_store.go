@@ -56,14 +56,11 @@ func (s *ProofRequestStore) Exists(proofRequestID string) bool {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	if expiry, exists := s.expiry[proofRequestID]; exists {
-		if time.Now().After(expiry) {
-			return false
-		}
-		return true
+	expiry, exists := s.expiry[proofRequestID]
+	if !exists {
+		return false
 	}
-
-	return false
+	return !time.Now().After(expiry)
 }
 
 func (s *ProofRequestStore) Delete(proofRequestID string) {
