@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"crypto/subtle"
 	"log"
 	"net/http"
 	"ssi-signin/backend/config"
@@ -123,6 +124,17 @@ type ProofCallbackResponse struct {
 }
 
 func (h *AuthHandler) ProofCallback(c echo.Context) error {
+	if want := h.cfg.ProofCallbackSecret; want != "" {
+		got := c.Request().Header.Get("X-Webhook-Secret")
+		if len(got) != len(want) || subtle.ConstantTimeCompare([]byte(got), []byte(want)) != 1 {
+			log.Printf("proof-callback: invalid webhook secret")
+			return c.JSON(http.StatusUnauthorized, ProofCallbackResponse{
+				Success: false,
+				Message: "Unauthorized",
+			})
+		}
+	}
+
 	var req ProofCallbackRequest
 	if err := c.Bind(&req); err != nil {
 		log.Printf("proof-callback bind: %v", err)

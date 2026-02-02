@@ -13,6 +13,7 @@ type Config struct {
 	CredentialDefinitionID string
 	CallbackURL            string
 	VerifierPublicURL      string
+	ProofCallbackSecret    string
 }
 
 func Load() *Config {
@@ -25,6 +26,7 @@ func Load() *Config {
 		CredentialDefinitionID: getEnv("CREDENTIAL_DEFINITION_ID", ""),
 		CallbackURL:            getEnv("CALLBACK_URL", "http://localhost:8080/api/proof-callback"),
 		VerifierPublicURL:      getEnv("VERIFIER_ENDPOINT", "http://localhost:8003"),
+		ProofCallbackSecret:    getEnv("PROOF_CALLBACK_SECRET", ""),
 	}
 }
 
