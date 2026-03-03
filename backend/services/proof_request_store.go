@@ -39,17 +39,14 @@ func (s *ProofRequestStore) Get(proofRequestID string) (string, bool) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	if expiry, exists := s.expiry[proofRequestID]; exists {
-		if time.Now().After(expiry) {
-			delete(s.store, proofRequestID)
-			delete(s.expiry, proofRequestID)
-			return "", false
-		}
-		token, ok := s.store[proofRequestID]
-		return token, ok
+	expiry, exists := s.expiry[proofRequestID]
+	if !exists {
+		return "", false
 	}
-
-	return "", false
+	if time.Now().After(expiry) {
+		return "", false
+	}
+	return s.store[proofRequestID], true
 }
 
 func (s *ProofRequestStore) Exists(proofRequestID string) bool {
