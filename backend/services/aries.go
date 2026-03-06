@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"time"
 )
 
 type AriesService struct {
@@ -21,7 +22,7 @@ func NewAriesService(issuerURL, verifierURL, ledgerURL string) *AriesService {
 		issuerURL:   issuerURL,
 		verifierURL: verifierURL,
 		ledgerURL:   ledgerURL,
-		client:      &http.Client{},
+		client:      &http.Client{Timeout: 60 * time.Second},
 	}
 }
 
