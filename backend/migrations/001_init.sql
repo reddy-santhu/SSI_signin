@@ -18,3 +18,5 @@ CREATE INDEX IF NOT EXISTS idx_users_did ON users(did);
 
 CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token);
 
+CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);
+
