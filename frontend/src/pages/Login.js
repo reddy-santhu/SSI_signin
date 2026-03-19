@@ -21,9 +21,12 @@ function Login() {
   useEffect(() => {
     if (!proofRequestId) return;
 
+    let failCount = 0;
+
     const interval = setInterval(async () => {
       try {
         const response = await api.get(`/login/status/${proofRequestId}`);
+        failCount = 0;
         if (response.data.status === 'completed' && response.data.session_token) {
           localStorage.setItem('sessionToken', response.data.session_token);
           clearInterval(interval);
@@ -36,6 +39,13 @@ function Login() {
         }
       } catch (err) {
         console.error('Error checking login status:', err);
+        failCount += 1;
+        if (failCount >= 5) {
+          clearInterval(interval);
+          setError('Connection lost. Please try again.');
+          setQrData(null);
+          setProofRequestId(null);
+        }
       }
     }, 2000);
 
